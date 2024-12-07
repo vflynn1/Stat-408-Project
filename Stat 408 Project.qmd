@@ -1,0 +1,730 @@
+---
+title: "Project Draft"
+author: "Roni Flynn"
+format: 
+  html:
+    self-contained: true
+    embed-resources: true
+editor: visual
+execute: 
+  echo: true
+  include: true
+---
+
+```{r}
+Performance <- read.csv("Data/StudentPerformanceFactors.csv")
+```
+
+#### Performing Variable Selection
+
+```{r}
+#Determine if polynomial terms are needed by analyzing scatterplots. If the scatter plot for an explanatory variable does not appear linear, than I will add a polynomial term. 
+#I will not add polynomial terms for categorical variables, so I will only analyze the scatterplots of Hours_Studied, Attendance, Sleep_Hours, Previous_Scores, Tutoring_Sessions and Physical_Activity.
+library(tidyverse)
+
+#Hours_Studied
+ggplot(aes(x = Hours_Studied, y = Exam_Score), data = Performance) + geom_point()
+
+#Attendance
+ggplot(aes(x = Attendance, y = Exam_Score), data = Performance) + geom_point()
+
+#Sleep_Hours
+ggplot(aes(x = Sleep_Hours, y = Exam_Score), data = Performance) + geom_point()
+
+#Previous_Scores
+ggplot(aes(x = Previous_Scores, y = Exam_Score), data = Performance) + geom_point()
+
+#Tutoring_Sessions
+ggplot(aes(x = Tutoring_Sessions, y = Exam_Score), data = Performance) + geom_point()
+
+#Physical_Activity
+ggplot(aes(x = Physical_Activity, y = Exam_Score), data = Performance) + geom_point()
+
+```
+
+#### Maximum Model (Linear)
+
+```{r}
+mod_max <- lm(Exam_Score ~ .*. + I(Tutoring_Sessions^2) + I(Physical_Activity^2) + I(Sleep_Hours^2), Performance)
+
+summary(mod_max)
+```
+
+##### AIC
+
+```{r}
+AIC(mod_max)
+```
+
+##### Hypothesis Tests
+
+```{r}
+library(zoo)
+library(lmtest)
+
+plot(mod_max,2)
+bptest(mod_max)
+
+plot(mod_max,1)
+ks.test(rstandard(mod_max),  "pnorm")
+
+```
+
+#### Linear Best Model
+
+```{r}
+library(leaps)
+var_sel <- regsubsets(Exam_Score ~ .*. + I(Tutoring_Sessions^2) + I(Physical_Activity^2) + I(Sleep_Hours^2), Performance, method = "backward", nvmax = 100, really.big = TRUE)
+
+
+which.min(summary(var_sel)$cp)
+
+coef(var_sel, 97)
+```
+
+```{r}
+mod_best  <- lm(Exam_Score ~ Hours_Studied + 
+Attendance + 
+Parental_Involvement + 
+Access_to_Resources + 
+Extracurricular_Activities + 
+Previous_Scores + 
+Internet_Access + 
+Tutoring_Sessions + 
+Teacher_Quality + 
+Physical_Activity + 
+Parental_Education_Level + 
+Distance_from_Home + 
+Gender + 
+Hours_Studied:Attendance + 
+Hours_Studied:Motivation_Level + 
+Hours_Studied:Internet_Access + 
+Hours_Studied:Teacher_Quality  + 
+Hours_Studied:School_Type + 
+Hours_Studied:Peer_Influence + 
+Hours_Studied:Physical_Activity + 
+Hours_Studied:Parental_Education_Level + 
+Attendance:Previous_Scores + 
+Attendance:Family_Income + 
+Attendance:Teacher_Quality +
+Attendance:Learning_Disabilities + 
+Parental_Involvement:Access_to_Resources + 
+Parental_Involvement:Motivation_Level + 
+Parental_Involvement:Tutoring_Sessions + 
+Parental_Involvement:Teacher_Quality + 
+Parental_Involvement:School_Type + 
+Parental_Involvement:Parental_Education_Level + 
+Parental_Involvement:Distance_from_Home + 
+Parental_Involvement:Gender + 
+Access_to_Resources:Motivation_Level + 
+Access_to_Resources:Internet_Access + 
+Access_to_Resources:Family_Income + 
+Access_to_Resources:Peer_Influence + 
+Access_to_Resources:Gender + 
+Extracurricular_Activities:Family_Income + 
+Extracurricular_Activities:Teacher_Quality + 
+Sleep_Hours:Previous_Scores + 
+Sleep_Hours:Peer_Influence + 
+Sleep_Hours:Peer_Influence + 
+Sleep_Hours:Learning_Disabilities + 
+Previous_Scores:School_Type + 
+Previous_Scores:Peer_Influence + 
+Previous_Scores:Learning_Disabilities + 
+Previous_Scores:Distance_from_Home + 
+Motivation_Level:Internet_Access + 
+Motivation_Level:Learning_Disabilities + 
+Motivation_Level:Parental_Education_Level + 
+Motivation_Level:Distance_from_Home + 
+Motivation_Level:Gender + 
+Internet_Access:Family_Income + 
+Family_Income:Peer_Influence + 
+Family_Income:Physical_Activity + 
+Teacher_Quality:School_Type + 
+Teacher_Quality:Peer_Influence + 
+Teacher_Quality:Physical_Activity + 
+Teacher_Quality:Learning_Disabilities + 
+Teacher_Quality:Parental_Education_Level + 
+Teacher_Quality:Distance_from_Home + 
+Teacher_Quality:Gender + 
+School_Type:Distance_from_Home + 
+Peer_Influence:Learning_Disabilities + 
+Peer_Influence:Parental_Education_Level + 
+Physical_Activity:Learning_Disabilities + 
+Learning_Disabilities:Parental_Education_Level + 
+Learning_Disabilities:Distance_from_Home + 
+Distance_from_Home:Gender
+, Performance)
+```
+
+##### AIC
+
+```{r}
+AIC(mod_best)
+```
+
+##### Hypothesis Tests
+
+```{r}
+plot(mod_best,1)
+ks.test(rstandard(mod_best), "pnorm")
+
+plot(mod_best,2)
+bptest(mod_best)
+```
+
+#### Maximum Model (log)
+
+```{r}
+mod_log_max  <- lm(log(Exam_Score) ~ .*. + I(Tutoring_Sessions^2) + I(Physical_Activity^2) + I(Sleep_Hours^2), Performance)
+```
+
+##### AIC
+
+```{r}
+AIC(mod_log_max)
+```
+
+##### Hypothesis Tests
+
+```{r}
+plot(mod_log_max, 1)
+ks.test(residuals(mod_log_max), "pnorm")
+
+plot(mod_log_max, 2)
+bptest(mod_log_max)
+```
+
+```{r}
+summary(mod_log_max)
+```
+
+#### Log Best Model
+
+```{r}
+var_sel_log <- regsubsets(log(Exam_Score) ~ .*. + I(Tutoring_Sessions^2) + I(Physical_Activity^2) + I(Sleep_Hours^2), Performance, method = "backward", nvmax = 100, really.big = TRUE)
+
+which.min(summary(var_sel_log)$cp)
+
+coef(var_sel_log, 87)
+```
+
+```{r}
+#Model 
+mod_log_best <- lm(log(Exam_Score)~ 
+Hours_Studied + 
+Attendance + 
+Parental_Involvement + 
+Access_to_Resources + 
+Extracurricular_Activities + 
+Previous_Scores + 
+Motivation_Level + 
+Internet_Access+ 
+Tutoring_Sessions + 
+Family_Income + 
+Teacher_Quality + 
+Peer_Influence + 
+Physical_Activity + 
+Parental_Education_Level + 
+Distance_from_Home + 
+Gender + 
+Hours_Studied:Access_to_Resources + 
+Hours_Studied:Motivation_Level + 
+Hours_Studied:Internet_Access + 
+Hours_Studied:Family_Income+ 
+Hours_Studied:Teacher_Quality + 
+Hours_Studied:School_Type + 
+Hours_Studied:Peer_Influence + 
+Hours_Studied:Parental_Education_Level + 
+Attendance:Parental_Involvement + 
+Attendance:Motivation_Level + 
+Attendance:Teacher_Quality + 
+Parental_Involvement:Access_to_Resources + 
+Parental_Involvement:Motivation_Level + 
+Parental_Involvement:Teacher_Quality + 
+Parental_Involvement:School_Type + 
+Parental_Involvement:Parental_Education_Level + 
+Parental_Involvement:Distance_from_Home + 
+Parental_Involvement:Gender + 
+Access_to_Resources:Motivation_Level + 
+Access_to_Resources:Family_Income + 
+Access_to_Resources:Physical_Activity + 
+Access_to_Resources:Gender + 
+Previous_Scores:School_Type + 
+Previous_Scores:Learning_Disabilities + 
+Previous_Scores:Parental_Education_Level + 
+Previous_Scores:Distance_from_Home + 
+Motivation_Level:Internet_Access + 
+Motivation_Level:Teacher_Quality + 
+Motivation_Level:Peer_Influence + 
+Motivation_Level:Learning_Disabilities + 
+Motivation_Level:Parental_Education_Level + 
+Motivation_Level:Gender + 
+Internet_Access:Family_Income + 
+Family_Income:Peer_Influence + 
+Family_Income:Physical_Activity + 
+Teacher_Quality:Peer_Influence + 
+Teacher_Quality:Physical_Activity + 
+Teacher_Quality:Learning_Disabilities + 
+Teacher_Quality:Parental_Education_Level + 
+Teacher_Quality:Distance_from_Home + 
+Teacher_Quality:Gender + 
+Peer_Influence:Learning_Disabilities + 
+Physical_Activity:Learning_Disabilities + 
+Learning_Disabilities:Parental_Education_Level + 
+Learning_Disabilities:Distance_from_Home + 
+Distance_from_Home:Gender
+, Performance)
+```
+
+##### AIC
+
+```{r}
+AIC(mod_log_best)
+```
+
+##### Hypothesis Tests
+
+```{r}
+plot(mod_log_best, 1)
+ks.test(residuals(mod_log_best), "pnorm")
+
+plot(mod_log_best, 2)
+bptest(mod_log_best)
+```
+
+#### Sq. Root Max Model
+
+```{r}
+mod_sqrt_max <- lm(sqrt(Exam_Score)~ .*. + I(Tutoring_Sessions^2) + I(Physical_Activity^2) + I(Sleep_Hours^2), Performance)
+```
+
+##### AIC
+
+```{r}
+AIC(mod_sqrt_max)
+```
+
+##### Hypothesis Tests
+
+```{r}
+plot(mod_sqrt_max, 1)
+ks.test(rstandard(mod_sqrt_max), "pnorm")
+
+plot(mod_sqrt_max,2)
+bptest(mod_sqrt_max)
+```
+
+#### Sqrt Best Model
+
+```{r}
+var_sel_sqrt <- regsubsets(sqrt(Exam_Score) ~ .*. + I(Tutoring_Sessions^2) + I(Physical_Activity^2) + I(Sleep_Hours^2), Performance, method = "backward", nvmax = 100, really.big = TRUE)
+
+which.min(summary(var_sel_sqrt)$cp)
+
+coef(var_sel_sqrt, 80)
+```
+
+```{r}
+mod_sqrt_best <- lm(sqrt(Exam_Score) ~ Hours_Studied +
+Attendance +
+Parental_Involvement+       
+Access_to_Resources +
+Extracurricular_Activities+ 
+Previous_Scores +
+Motivation_Level +
+Internet_Access +
+Tutoring_Sessions + 
+Family_Income +
+Teacher_Quality + 
+Physical_Activity + 
+Parental_Education_Level +
+Distance_from_Home +                                Gender +
+Hours_Studied:Access_to_Resources + 
+Hours_Studied:Motivation_Level + 
+Hours_Studied:Internet_Access + 
+Hours_Studied:Teacher_Quality + 
+Hours_Studied:School_Type +
+Hours_Studied:Peer_Influence +
+Hours_Studied:Parental_Education_Level +
+Attendance:Previous_Scores +
+Attendance:Motivation_Level +
+Attendance:Teacher_Quality +
+Parental_Involvement:Motivation_Level +
+Parental_Involvement:Tutoring_Sessions +
+Parental_Involvement:Teacher_Quality +
+Parental_Involvement:School_Type +
+Parental_Involvement:Parental_Education_Level +
+Parental_Involvement:Distance_from_Home +
+Parental_Involvement:Gender +
+Access_to_Resources:Motivation_Level +
+Access_to_Resources:Family_Income +
+Access_to_Resources:Peer_Influence +
+Access_to_Resources:Gender +
+Previous_Scores:School_Type +
+Previous_Scores:Peer_Influence +
+Previous_Scores:Learning_Disabilities +
+Previous_Scores:Parental_Education_Level +
+Previous_Scores:Distance_from_Home +
+Motivation_Level:Internet_Access +
+Motivation_Level:Teacher_Quality +
+Motivation_Level:Learning_Disabilities +
+Motivation_Level:Parental_Education_Level +         Family_Income:Peer_Influence +                      Family_Income:Physical_Activity +                   Teacher_Quality:Peer_Influence +                    Teacher_Quality:Physical_Activity +                 Teacher_Quality:Learning_Disabilities +             Teacher_Quality:Distance_from_Home +                Teacher_Quality:Gender +
+Peer_Influence:Learning_Disabilities +              Physical_Activity:Learning_Disabilities +  Learning_Disabilities:Parental_Education_Level+    Learning_Disabilities:Distance_from_Home +          Distance_from_Home:Gender, Performance 
+)
+```
+
+##### AIC
+
+```{r}
+AIC(mod_sqrt_best)
+```
+
+##### Hypothesis Tests
+
+```{r}
+plot(mod_sqrt_best, 1)
+ks.test(residuals(mod_sqrt_best), "pnorm")
+
+plot(mod_sqrt_best, 2)
+bptest(mod_sqrt_best)
+```
+
+#### Weighted Least Squares Model
+
+```{r}
+w <- (1 / fitted.values(mod_best))^2
+mod_weights  <- lm(Exam_Score ~ Hours_Studied + 
+Attendance + 
+Parental_Involvement + 
+Access_to_Resources + 
+Extracurricular_Activities + 
+Previous_Scores + 
+Internet_Access + 
+Tutoring_Sessions + 
+Teacher_Quality + 
+Physical_Activity + 
+Parental_Education_Level + 
+Distance_from_Home + 
+Gender + 
+Hours_Studied:Attendance + 
+Hours_Studied:Motivation_Level + 
+Hours_Studied:Internet_Access + 
+Hours_Studied:Teacher_Quality  + 
+Hours_Studied:School_Type + 
+Hours_Studied:Peer_Influence + 
+Hours_Studied:Physical_Activity + 
+Hours_Studied:Parental_Education_Level + 
+Attendance:Previous_Scores + 
+Attendance:Family_Income + 
+Attendance:Teacher_Quality +
+Attendance:Learning_Disabilities + 
+Parental_Involvement:Access_to_Resources + 
+Parental_Involvement:Motivation_Level + 
+Parental_Involvement:Tutoring_Sessions + 
+Parental_Involvement:Teacher_Quality + 
+Parental_Involvement:School_Type + 
+Parental_Involvement:Parental_Education_Level + 
+Parental_Involvement:Distance_from_Home + 
+Parental_Involvement:Gender + 
+Access_to_Resources:Motivation_Level + 
+Access_to_Resources:Internet_Access + 
+Access_to_Resources:Family_Income + 
+Access_to_Resources:Peer_Influence + 
+Access_to_Resources:Gender + 
+Extracurricular_Activities:Family_Income + 
+Extracurricular_Activities:Teacher_Quality + 
+Sleep_Hours:Previous_Scores + 
+Sleep_Hours:Peer_Influence + 
+Sleep_Hours:Peer_Influence + 
+Sleep_Hours:Learning_Disabilities + 
+Previous_Scores:School_Type + 
+Previous_Scores:Peer_Influence + 
+Previous_Scores:Learning_Disabilities + 
+Previous_Scores:Distance_from_Home + 
+Motivation_Level:Internet_Access + 
+Motivation_Level:Learning_Disabilities + 
+Motivation_Level:Parental_Education_Level + 
+Motivation_Level:Distance_from_Home + 
+Motivation_Level:Gender + 
+Internet_Access:Family_Income + 
+Family_Income:Peer_Influence + 
+Family_Income:Physical_Activity + 
+Teacher_Quality:School_Type + 
+Teacher_Quality:Peer_Influence + 
+Teacher_Quality:Physical_Activity + 
+Teacher_Quality:Learning_Disabilities + 
+Teacher_Quality:Parental_Education_Level + 
+Teacher_Quality:Distance_from_Home + 
+Teacher_Quality:Gender + 
+School_Type:Distance_from_Home + 
+Peer_Influence:Learning_Disabilities + 
+Peer_Influence:Parental_Education_Level + 
+Physical_Activity:Learning_Disabilities + 
+Learning_Disabilities:Parental_Education_Level + 
+Learning_Disabilities:Distance_from_Home + 
+Distance_from_Home:Gender
+, Performance, weights = w)
+```
+
+##### AIC
+
+```{r}
+AIC(mod_weights)
+```
+
+##### Hypothesis Tests
+
+```{r}
+plot(mod_weights, 1)
+plot(mod_weights, 2)
+bptest(mod_weights)
+ks.test(residuals(mod_weights), "pnorm")
+```
+
+#### VIF of Mod_Log_Best
+
+```{r}
+vif(mod_log_best, type = 'predictor')
+```
+
+```{r}
+mod_log_new <- lm(log(Exam_Score)~ 
+Hours_Studied + 
+Attendance + 
+Access_to_Resources + 
+Extracurricular_Activities + 
+Previous_Scores + 
+Internet_Access+ 
+Tutoring_Sessions + 
+Family_Income + 
+Teacher_Quality + 
+Peer_Influence + 
+Physical_Activity + 
+Parental_Education_Level + 
+Distance_from_Home + 
+Hours_Studied:Access_to_Resources + 
+Hours_Studied:Internet_Access + 
+Hours_Studied:Family_Income+ 
+Hours_Studied:Teacher_Quality + 
+Hours_Studied:School_Type + 
+Hours_Studied:Peer_Influence + 
+Hours_Studied:Parental_Education_Level + 
+Attendance:Teacher_Quality + 
+Access_to_Resources:Family_Income + 
+Access_to_Resources:Physical_Activity + 
+Previous_Scores:School_Type + 
+Previous_Scores:Learning_Disabilities + 
+Previous_Scores:Parental_Education_Level + 
+Previous_Scores:Distance_from_Home + 
+Internet_Access:Family_Income + 
+Family_Income:Peer_Influence + 
+Family_Income:Physical_Activity + 
+Teacher_Quality:Peer_Influence + 
+Teacher_Quality:Physical_Activity + 
+Teacher_Quality:Learning_Disabilities + 
+Teacher_Quality:Parental_Education_Level + 
+Teacher_Quality:Distance_from_Home + 
+Peer_Influence:Learning_Disabilities + 
+Physical_Activity:Learning_Disabilities + 
+Learning_Disabilities:Parental_Education_Level + 
+Learning_Disabilities:Distance_from_Home 
+, Performance)
+
+vif(mod_log_new, type = 'predictor')
+```
+
+```{r}
+AIC(mod_log_new)
+summary(mod_log_new)$r.squared
+```
+
+```{r}
+summary(mod_log_new)
+```
+
+```{r}
+vif(mod_log_new, type = 'predictor')
+```
+
+```{r}
+mod_log_1 <- lm(log(Exam_Score)~ 
+Attendance + 
+Access_to_Resources + 
+Extracurricular_Activities + 
+Previous_Scores + 
+Internet_Access+ 
+Tutoring_Sessions + 
+Family_Income + 
+Teacher_Quality + 
+Peer_Influence + 
+Physical_Activity + 
+Parental_Education_Level + 
+Distance_from_Home + 
+Attendance:Teacher_Quality + 
+Access_to_Resources:Family_Income + 
+Access_to_Resources:Physical_Activity + 
+Previous_Scores:School_Type + 
+Previous_Scores:Learning_Disabilities + 
+Previous_Scores:Parental_Education_Level + 
+Previous_Scores:Distance_from_Home + 
+Internet_Access:Family_Income + 
+Family_Income:Peer_Influence + 
+Family_Income:Physical_Activity + 
+Teacher_Quality:Peer_Influence + 
+Teacher_Quality:Physical_Activity + 
+Teacher_Quality:Learning_Disabilities + 
+Teacher_Quality:Parental_Education_Level + 
+Teacher_Quality:Distance_from_Home + 
+Peer_Influence:Learning_Disabilities + 
+Physical_Activity:Learning_Disabilities + 
+Learning_Disabilities:Parental_Education_Level + 
+Learning_Disabilities:Distance_from_Home 
+, Performance)
+
+vif(mod_log_1, type = 'predictor')
+```
+
+```{r}
+mod_log_2 <- lm(log(Exam_Score)~ 
+Attendance + 
+Access_to_Resources + 
+Extracurricular_Activities + 
+Internet_Access+ 
+Tutoring_Sessions + 
+Family_Income + 
+Teacher_Quality + 
+Peer_Influence + 
+Physical_Activity + 
+Parental_Education_Level + 
+Distance_from_Home + 
+Attendance:Teacher_Quality + 
+Access_to_Resources:Family_Income + 
+Access_to_Resources:Physical_Activity + 
+Internet_Access:Family_Income + 
+Family_Income:Peer_Influence + 
+Family_Income:Physical_Activity + 
+Teacher_Quality:Peer_Influence + 
+Teacher_Quality:Physical_Activity + 
+Teacher_Quality:Learning_Disabilities + 
+Teacher_Quality:Parental_Education_Level + 
+Teacher_Quality:Distance_from_Home + 
+Peer_Influence:Learning_Disabilities + 
+Physical_Activity:Learning_Disabilities + 
+Learning_Disabilities:Parental_Education_Level + 
+Learning_Disabilities:Distance_from_Home 
+, Performance)
+
+vif(mod_log_2, type = "predictor")
+```
+
+```{r}
+mod_log_3 <- lm(log(Exam_Score)~ 
+Attendance + 
+Access_to_Resources + 
+Extracurricular_Activities + 
+Internet_Access+ 
+Tutoring_Sessions + 
+Family_Income + 
+Teacher_Quality + 
+Parental_Education_Level + 
+Distance_from_Home + 
+Attendance:Teacher_Quality + 
+Access_to_Resources:Family_Income + 
+Access_to_Resources:Physical_Activity + 
+Internet_Access:Family_Income + 
+Family_Income:Physical_Activity + 
+Teacher_Quality:Physical_Activity + 
+Teacher_Quality:Learning_Disabilities + 
+Teacher_Quality:Parental_Education_Level + 
+Teacher_Quality:Distance_from_Home + 
+Physical_Activity:Learning_Disabilities + 
+Learning_Disabilities:Parental_Education_Level + 
+Learning_Disabilities:Distance_from_Home 
+, Performance)
+
+vif(mod_log_3, type = 'predictor')
+```
+
+```{r}
+mod_log_4 <- lm(log(Exam_Score)~ 
+Attendance + 
+Access_to_Resources + 
+Extracurricular_Activities + 
+Internet_Access+ 
+Tutoring_Sessions + 
+Family_Income + 
+Teacher_Quality + 
+Distance_from_Home + 
+Attendance:Teacher_Quality + 
+Access_to_Resources:Family_Income + 
+Internet_Access:Family_Income + 
+Teacher_Quality:Learning_Disabilities + 
+Teacher_Quality:Distance_from_Home + 
+Physical_Activity:Learning_Disabilities + 
+Learning_Disabilities:Distance_from_Home 
+, Performance)
+vif(mod_log_4, type = 'predictor')
+```
+
+```{r}
+mod_log_5 <- lm(log(Exam_Score)~ 
+Attendance + 
+Access_to_Resources + 
+Extracurricular_Activities + 
+Internet_Access+ 
+Tutoring_Sessions + 
+Family_Income + 
+Teacher_Quality + 
+Attendance:Teacher_Quality + 
+Access_to_Resources:Family_Income + 
+Internet_Access:Family_Income + 
+Teacher_Quality:Learning_Disabilities + 
+Physical_Activity:Learning_Disabilities 
+, Performance)
+vif(mod_log_5, type = 'predictor')
+```
+
+```{r}
+mod_log_6 <- lm(log(Exam_Score)~ 
+Attendance + 
+Access_to_Resources + 
+Extracurricular_Activities + 
+Internet_Access+ 
+Tutoring_Sessions + 
+Family_Income + 
+Teacher_Quality + 
+Attendance:Teacher_Quality + 
+Access_to_Resources:Family_Income + 
+Internet_Access:Family_Income 
+, Performance)
+vif(mod_log_6, type = 'predictor')
+
+```
+
+```{r}
+mod_log_7 <- lm(log(Exam_Score)~ 
+Attendance + 
+Extracurricular_Activities + 
+Internet_Access+ 
+Tutoring_Sessions + 
+Family_Income + 
+Teacher_Quality + 
+Attendance:Teacher_Quality + 
+Internet_Access:Family_Income 
+, Performance)
+vif(mod_log_7, type = 'predictor')
+```
+
+```{r}
+summary(mod_log_7)
+```
+
+```{r}
+AIC(mod_log_7)
+summary(mod_log_7)$r.squared
+```
+
+```{r}
+bptest(mod_log_7)
+ks.test(rstandard(mod_log_7), 'pnorm')
+```
